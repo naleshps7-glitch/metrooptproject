@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MetroOpt – Train induction planning (demo)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#f3f5f8; --surface:#ffffff; --ink:#142032; --muted:#5a6679; --line:#dce1e9;
+    --accent:#0b6e8a; --accent-ink:#ffffff; --accent-soft:#e1f1f5;
+    --man:#0b6e8a; --opt:#8ea3b8; --ok:#15803d; --warn:#c2570c; --bad:#b91c1c;
+    --ok-soft:#e3f4e9; --warn-soft:#fdeedd; --bad-soft:#fbe4e4;
+    --hatch:rgba(90,102,121,.16); --mt:rgba(194,87,12,.28);
+    --font:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg:#0e131b; --surface:#151b25; --ink:#e8edf5; --muted:#97a3b6; --line:#273041;
+      --accent:#4fb3d0; --accent-ink:#0e131b; --accent-soft:#16303a;
+      --man:#4fb3d0; --opt:#6c7f95; --ok:#4cc27a; --warn:#f0a15c; --bad:#f07a7a;
+      --ok-soft:#14301f; --warn-soft:#3a2713; --bad-soft:#3b1a1a;
+      --hatch:rgba(151,163,182,.14); --mt:rgba(240,161,92,.3);
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg:#0e131b; --surface:#151b25; --ink:#e8edf5; --muted:#97a3b6; --line:#273041;
+    --accent:#4fb3d0; --accent-ink:#0e131b; --accent-soft:#16303a;
+    --man:#4fb3d0; --opt:#6c7f95; --ok:#4cc27a; --warn:#f0a15c; --bad:#f07a7a;
+    --ok-soft:#14301f; --warn-soft:#3a2713; --bad-soft:#3b1a1a;
+    --hatch:rgba(151,163,182,.14); --mt:rgba(240,161,92,.3);
+    color-scheme:dark;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{height:100%}
+  body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+  h1,h2,h3{margin:0;letter-spacing:-.01em}
+  button{font-family:inherit}
+
+  .app{display:grid;grid-template-columns:216px 1fr;min-height:100vh}
+  .side{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px}
+  .brand{font-weight:700;font-size:1.15rem;padding:2px 10px 14px}
+  .brand small{display:block;font-weight:400;font-size:.75rem;color:var(--muted)}
+  .side a.nav{display:block;padding:9px 12px;border-radius:8px;color:var(--muted);text-decoration:none;font-weight:500}
+  .side a.nav:hover{background:var(--bg);color:var(--ink)}
+  .side a.nav.on{background:var(--accent-soft);color:var(--accent)}
+  .side .foot{margin-top:auto;font-size:.78rem;color:var(--muted);padding:0 10px;display:grid;gap:10px}
+  .main{padding:22px 28px 60px;min-width:0}
+  .banner{background:var(--warn-soft);color:var(--warn);border:1px solid var(--line);border-radius:10px;padding:8px 14px;font-size:.86rem;margin-bottom:20px}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .head h1{font-size:1.6rem}
+  .head p{margin:4px 0 0;color:var(--muted);max-width:60ch}
+
+  .grid{display:grid;gap:14px}
+  .cards{grid-template-columns:repeat(auto-fill,minmax(190px,1fr))}
+  .two{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .stat .l{color:var(--muted);font-size:.84rem}
+  .stat .v{font-size:1.9rem;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin-top:2px}
+  .stat .s{color:var(--muted);font-size:.8rem;margin-top:2px}
+  .stat.ok .v{color:var(--ok)} .stat.bad .v{color:var(--bad)} .stat.warn .v{color:var(--warn)}
+  .card h2{font-size:1.02rem;margin-bottom:12px}
+  .sub{color:var(--muted);font-size:.86rem}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);padding:9px 16px;border-radius:8px;font-weight:600;cursor:pointer;font-size:.92rem}
+  .btn:hover{opacity:.92}
+  .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+  .btn.ghost:hover{border-color:var(--muted)}
+  .btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+  .btn.sm{padding:5px 10px;font-size:.82rem}
+  .btn[disabled]{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+
+  .chip{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:600;background:var(--bg);color:var(--muted);border:1px solid var(--line)}
+  .chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+  .chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+  .chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+  .chip.man{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+  .alert{border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:.92rem}
+  .alert.ok{background:var(--ok-soft);color:var(--ok)} .alert.bad{background:var(--bad-soft);color:var(--bad)} .alert.warn{background:var(--warn-soft);color:var(--warn)}
+  .alert b{font-weight:600}
+
+  .tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+  table{border-collapse:collapse;width:100%;font-size:.9rem}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top;white-space:nowrap}
+  td.wrap{white-space:normal}
+  th{font-weight:600;color:var(--muted);font-size:.82rem;background:var(--bg)}
+  tr:last-child td{border-bottom:0}
+  tr.dim td{color:var(--muted)}
+
+  label{display:grid;gap:4px;font-size:.84rem;color:var(--muted);font-weight:500}
+  input,select,textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+  input[type=checkbox]{width:auto}
+  .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+  .check{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:.9rem}
+  .err{color:var(--bad);font-size:.85rem;margin-top:8px;min-height:1.2em}
+
+  /* Gantt */
+  .gwrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+  .gantt{min-width:920px}
+  .grow{display:grid;grid-template-columns:70px 1fr;align-items:center;height:34px}
+  .grow .lab{font-size:.8rem;font-weight:600}
+  .grow .lab small{display:block;font-weight:400;color:var(--muted);font-size:.68rem;line-height:1}
+  .track{position:relative;height:26px;background:var(--bg);border-radius:5px}
+  .track .na,.track .mt,.track .gl{position:absolute;top:0;bottom:0}
+  .track .na{background:repeating-linear-gradient(135deg,var(--hatch) 0 4px,transparent 4px 8px)}
+  .track .mt{background:var(--mt)}
+  .track .gl{width:1px;background:var(--line)}
+  .blk{position:absolute;top:3px;bottom:3px;border:0;border-radius:4px;color:#fff;font-size:10px;font-weight:600;cursor:pointer;padding:0;overflow:hidden;min-width:4px}
+  .blk.man{background:var(--man)} .blk.opt{background:var(--opt)}
+  .blk.chg{box-shadow:0 0 0 2px var(--warn)}
+  .blk.sel{box-shadow:0 0 0 2px var(--ink)}
+  .axis{display:grid;grid-template-columns:70px 1fr;height:20px;margin-bottom:4px}
+  .axis .t{position:relative}
+  .axis span{position:absolute;transform:translateX(-50%);font-size:.72rem;color:var(--muted)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);margin:10px 0 0}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:5px}
+
+  .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:.9rem}
+  .kv dt{color:var(--muted)} .kv dd{margin:0}
+  .mrow{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+  ul.plain{margin:0;padding-left:18px} ul.plain li{margin:3px 0}
+
+  dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:0;width:calc(100% - 32px);max-width:560px}
+  dialog::backdrop{background:rgba(10,16,26,.5)}
+  .dh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .dh h3{font-size:1.05rem}
+  .x{background:none;border:0;font-size:1.5rem;color:var(--muted);cursor:pointer;line-height:1}
+  .db{padding:18px 20px;max-height:70vh;overflow:auto}
+  .df{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+  #toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:50;max-width:90%}
+  #toast.on{opacity:1}
+  svg text{font-family:var(--font)}
+
+  @media (max-width:860px){
+    .app{grid-template-columns:1fr}
+    .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center;padding:10px 12px;border-right:0;border-bottom:1px solid var(--line)}
+    .brand{padding:0 8px 0 0} .brand small{display:none}
+    .side .foot{margin:0 0 0 auto;display:flex}
+    .side .foot .note{display:none}
+    .main{padding:16px 14px 50px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">MetroOpt<small>Train induction planning</small></div>
+    <a class="nav" href="#/dashboard" data-nav="dashboard">Dashboard</a>
+    <a class="nav" href="#/trainsets" data-nav="trainsets">Trainsets</a>
+    <a class="nav" href="#/trips" data-nav="trips">Trips</a>
+    <a class="nav" href="#/schedule" data-nav="schedule">Scheduling</a>
+    <a class="nav" href="#/disruptions" data-nav="disruptions">Disruptions</a>
+    <div class="foot">
+      <div class="note">The solver runs in your browser in this demo. The full build runs it on a FastAPI and OR-Tools backend.</div>
+      <div class="row"><button class="btn ghost sm" data-action="theme">Light / dark</button><button class="btn ghost sm" data-action="reset">Reset data</button></div>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="banner">Prototype. All trainsets, trips and times are fictional sample data, and every operating rule is a configurable parameter. None of it reflects real KMRL operations.</div>
+    <div id="view"></div>
+  </main>
+</div>
+<dialog id="dlg"></dialog>
+<div id="toast" role="status"></div>
+
+<script id="core">
+/* ============ helpers ============ */
+const clone = o => JSON.parse(JSON.stringify(o));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = m => { m = Math.round(m); return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0'); };
+const parseT = s => { if (!/^\d{1,2}:\d{2}$/.test(s || '')) return NaN; const [h,m] = s.split(':').map(Number); return (h > 23 || m > 59) ? NaN : h*60 + m; };
+
+/* ============ sample data (fictional) ============ */
+function defaultParams() {
+  return { date:'2026-10-15', turnaround:10, fleetCost:100, optionalValue:60, changePenalty:30,
+           includeOptional:true, keepPrev:false, nodeLimit:300000, timeLimitMs:2000 };
+}
+function sampleData() {
+  const mk = (id, s, e, readiness, turnaround, maint) => ({ id, status:'active', availStart:s, availEnd:e, readiness, turnaround, maintenance:maint||[], notes:'' });
+  const trainsets = [
+    mk('TS-01', 300, 1380, 15, ''),
+    mk('TS-02', 300, 1380, 15, '', [{start:780,end:900,note:'Scheduled inspection'}]),
+    mk('TS-03', 330, 1350, 15, ''),
+    mk('TS-04', 360, 1380, 20, 15),
+    mk('TS-05', 300, 1260, 15, ''),
+    mk('TS-06', 300, 1439, 15, '', [{start:600,end:720,note:'Cleaning cycle'}]),
+    mk('TS-07', 300, 1380, 15, ''),
+    mk('TS-08', 960, 1380, 15, '')
+  ];
+  trainsets[6].status = 'inactive'; trainsets[6].notes = 'In workshop (sample)';
+  const raw = [];
+  const add = (dep, pri, block) => raw.push({ dep, arr: dep + 45, priority: pri, block });
+  for (let t = 420; t < 600; t += 12) add(t, 'mandatory', 'Morning peak');
+  for (let t = 1020; t < 1200; t += 12) add(t, 'mandatory', 'Evening peak');
+  for (let t = 330; t < 420; t += 30) add(t, 'optional', 'Early');
+  for (let t = 600; t < 1020; t += 30) add(t, 'optional', 'Midday');
+  for (let t = 1200; t <= 1320; t += 30) add(t, 'optional', 'Late');
+  raw.sort((a,b) => a.dep - b.dep);
+  const trips = raw.map((r,i) => ({ id:'T-' + String(i+1).padStart(3,'0'), ...r }));
+  return { trainsets, trips };
+}
+
+/* ============ SOLVER START ============ */
+const trainTurn = (t, p) => (t.turnaround !== '' && t.turnaround != null) ? Number(t.turnaround) : p.turnaround;
+
+/* Returns null when the trip fits the trainset on its own, otherwise the reason it does not. */
+function baseFeasible(trip, t) {
+  if (t.status !== 'active') return 'the trainset is inactive';
+  if (trip.dep < t.availStart + (t.readiness || 0)) return 'it departs before the trainset is available and ready';
+  if (trip.arr > t.availEnd) return 'it arrives after the trainset’s availability ends';
+  for (const m of t.maintenance) if (trip.dep < m.end && trip.arr > m.start) return 'it overlaps a maintenance window';
+  return null;
+}
+const conflicts = (a, b, turn) => !(b.dep >= a.arr + turn && a.dep >= b.arr + turn);
+
+/* Exact branch-and-bound over trips ordered by departure.
+   Cost = 1,000,000 per unserved mandatory trip + optionalValue per skipped optional trip
+        + fleetCost per trainset deployed + changePenalty per assignment that differs from the previous plan. */
+function solve(trainsets, trips, p, prev) {
+  const t0 = performance.now();
+  const T = trainsets.filter(t => t.status === 'active');
+  const list = trips.filter(t => p.includeOptional || t.priority === 'mandatory')
+                    .sort((a,b) => a.dep - b.dep || a.arr - b.arr || a.id.localeCompare(b.id));
+  const n = list.length, m = T.length;
+  const turn = T.map(t => trainTurn(t, p));
+  const cand = list.map(trip => { const r = []; T.forEach((t,k) => { if (baseFeasible(trip, t) === null) r.push(k); }); return r; });
+  const sig = T.map((t,k) => JSON.stringify([t.availStart, t.availEnd, t.readiness || 0, turn[k], t.maintenance.map(x => [x.start, x.end])]));
+  const idx = {}; T.forEach((t,k) => idx[t.id] = k);
+  const W = { m:1e6, o:p.optionalValue, f:p.fleetCost, c:p.changePenalty };
+  const unservedCost = list.map(t => t.priority === 'mandatory' ? W.m : W.o);
+  const prevT = list.map(t => (prev && (t.id in prev)) ? prev[t.id] : undefined);
+  const changeCost = (i, k) => prevT[i] === undefined ? 0 : ((k < 0 ? null : T[k].id) === prevT[i] ? 0 : W.c);
+
+  const suf = new Array(n + 1).fill(0);
+  for (let i = n - 1; i >= 0; i--) suf[i] = suf[i+1] + (cand[i].length === 0 ? unservedCost[i] : 0);
+
+  // lower bound on trainsets: deepest overlap of servable mandatory trips (using the smallest turnaround)
+  const minTurn = m ? Math.min(...turn) : 0;
+  const ev = [];
+  list.forEach((t,i) => { if (t.priority === 'mandatory' && cand[i].length) { ev.push([t.dep, 1]); ev.push([t.arr + minTurn, -1]); } });
+  ev.sort((a,b) => a[0] - b[0] || a[1] - b[1]);
+  let depth = 0, cur = 0; ev.forEach(e => { cur += e[1]; depth = Math.max(depth, cur); });
+  const lbTotal = suf[0] + depth * W.f;
+
+  const maxEnd = new Array(m).fill(-1e9), used = new Array(m).fill(false), cur_ = new Array(n).fill(-1);
+  let best = { cost: Infinity, assign: null, usedCount: 0 };
+  let nodes = 0, stop = false, limitHit = false;
+  const nodeLimit = Math.max(1000, p.nodeLimit);
+
+  function dfs(i, cost, usedCount) {
+    if (stop) return;
+    if (cost + suf[i] >= best.cost) return;
+    if (i === n) { best = { cost, assign: cur_.slice(), usedCount }; if (cost <= lbTotal) stop = true; return; }
+    if (++nodes > nodeLimit || ((nodes & 1023) === 0 && performance.now() - t0 > p.timeLimitMs)) { stop = true; limitHit = true; return; }
+    const trip = list[i];
+    const free = k => trip.dep >= maxEnd[k] + turn[k];
+    const pk = (prevT[i] != null && idx[prevT[i]] !== undefined) ? idx[prevT[i]] : -1;
+    const opts = [], seen = new Set();
+    if (pk >= 0 && cand[i].includes(pk) && free(pk)) { opts.push(pk); seen.add(sig[pk]); }
+    cand[i].filter(k => used[k] && k !== pk && free(k)).sort((a,b) => maxEnd[b] - maxEnd[a]).forEach(k => opts.push(k));
+    for (const k of cand[i]) if (!used[k] && k !== pk) { if (seen.has(sig[k])) continue; seen.add(sig[k]); opts.push(k); }
+    for (const k of opts) {
+      const was = maxEnd[k], wasUsed = used[k];
+      maxEnd[k] = Math.max(was, trip.arr); used[k] = true; cur_[i] = k;
+      dfs(i + 1, cost + changeCost(i, k) + (wasUsed ? 0 : W.f), usedCount + (wasUsed ? 0 : 1));
+      maxEnd[k] = was; used[k] = wasUsed; cur_[i] = -1;
+      if (stop) return;
+    }
+    cur_[i] = -1;
+    dfs(i + 1, cost + unservedCost[i] + changeCost(i, -1), usedCount);
+  }
+  dfs(0, 0, 0);
+
+  const assign = {};
+  list.forEach((trip, i) => { const k = best.assign ? best.assign[i] : -1; assign[trip.id] = k >= 0 ? T[k].id : null; });
+  return { assign, cost: best.cost, trainsUsed: best.usedCount, nodes, ms: performance.now() - t0,
+           proven: !limitHit, lowerBound: lbTotal, minFleet: depth };
+}
+
+/* Independent check of a finished schedule against the constraint set. */
+function validate(trainsets, trips, assign, p) {
+  const ts = {}; trainsets.forEach(t => ts[t.id] = t);
+  const tr = {}; trips.forEach(t => tr[t.id] = t);
+  const v = [], by = {};
+  for (const [tid, train] of Object.entries(assign)) {
+    if (!train || !tr[tid]) continue;
+    (by[train] = by[train] || []).push(tr[tid]);
+  }
+  for (const [trainId, ls] of Object.entries(by)) {
+    const t = ts[trainId];
+    if (!t) { ls.forEach(x => v.push({ key:'inactive', trip:x.id, train:trainId, msg:`${x.id} is on ${trainId}, which does not exist` })); continue; }
+    ls.sort((a,b) => a.dep - b.dep);
+    const turn = trainTurn(t, p);
+    for (const x of ls) {
+      if (x.arr <= x.dep) v.push({ key:'integrity', trip:x.id, train:trainId, msg:`${x.id} arrives before it departs` });
+      if (t.status !== 'active') v.push({ key:'inactive', trip:x.id, train:trainId, msg:`${x.id} is on inactive trainset ${trainId}` });
+      if (x.dep < t.availStart + (t.readiness || 0) || x.arr > t.availEnd) v.push({ key:'availability', trip:x.id, train:trainId, msg:`${x.id} falls outside ${trainId}’s availability (${fmt(t.availStart)}–${fmt(t.availEnd)}, ${t.readiness || 0} min readiness)` });
+      for (const mw of t.maintenance) if (x.dep < mw.end && x.arr > mw.start) v.push({ key:'maintenance', trip:x.id, train:trainId, msg:`${x.id} overlaps maintenance ${fmt(mw.start)}–${fmt(mw.end)} on ${trainId}` });
+    }
+    for (let i = 0; i < ls.length; i++) for (let j = i + 1; j < ls.length; j++) {
+      const a = ls[i], b = ls[j];
+      if (b.dep < a.arr) v.push({ key:'overlap', trip:b.id, train:trainId, msg:`${a.id} and ${b.id} overlap on ${trainId}` });
+      else if (b.dep < a.arr + turn) v.push({ key:'turnaround', trip:b.id, train:trainId, msg:`${a.id} to ${b.id} on ${trainId} leaves ${b.dep - a.arr} min, below the ${turn} min turnaround` });
+    }
+  }
+  const mandUnserved = trips.filter(t => t.priority === 'mandatory' && !assign[t.id]).length;
+  const cats = [
+    ['overlap','No trainset runs two trips at once'], ['turnaround','Minimum turnaround respected'],
+    ['availability','Trips inside availability and readiness'], ['maintenance','No trip overlaps maintenance'],
+    ['inactive','Inactive trainsets are not used'], ['integrity','Every trip arrives after it departs']
+  ].map(([key,label]) => ({ key, label, count: v.filter(x => x.key === key).length }));
+  return { violations: v, categories: cats, mandUnserved };
+}
+
+/* Why could this trip not be placed? Lists each trainset's blocker. */
+function diagnose(trip, trainsets, assign, trips, p) {
+  const lines = []; let anyFeasible = false;
+  for (const t of trainsets) {
+    const r = baseFeasible(trip, t);
+    if (r) { lines.push(`${t.id}: ${r}`); continue; }
+    anyFeasible = true;
+    const turn = trainTurn(t, p);
+    const o = trips.find(x => x.id !== trip.id && assign[x.id] === t.id && conflicts(trip, x, turn));
+    lines.push(`${t.id}: busy with ${o ? o.id : 'other trips'}`);
+  }
+  return { lines, anyFeasible };
+}
+
+function explainTrip(trip, trainId, ctx) {
+  const prevT = (ctx.prev && (trip.id in ctx.prev)) ? ctx.prev[trip.id] : undefined;
+  const mates = ctx.trips.filter(x => x.id !== trip.id && ctx.assign[x.id] === trainId);
+  if (prevT === trainId) return `Kept on ${trainId}. Its previous assignment is still feasible, so nothing was changed.`;
+  if (prevT === null) return `Now served on ${trainId}. It was unserved in the previous plan.`;
+  if (prevT !== undefined) {
+    const pt = ctx.ts[prevT]; let why = 'the plan was re-optimised';
+    if (!pt) why = `${prevT} no longer exists`;
+    else {
+      const r = baseFeasible(trip, pt);
+      if (r) why = `${prevT} can no longer run it (${r})`;
+      else { const turn = trainTurn(pt, ctx.p); const o = ctx.trips.find(x => x.id !== trip.id && ctx.assign[x.id] === prevT && conflicts(trip, x, turn)); if (o) why = `${prevT} is now busy with ${o.id}`; }
+    }
+    return `Moved from ${prevT} to ${trainId} because ${why}.`;
+  }
+  const earlier = mates.filter(x => x.dep < trip.dep).sort((a,b) => b.dep - a.dep)[0];
+  if (earlier) return `Chained on ${trainId} after ${earlier.id}, with the ${trainTurn(ctx.ts[trainId], ctx.p)} min turnaround respected. Reusing a trainset already in service avoids deploying another.`;
+  const anyEarlier = ctx.trips.some(x => x.id !== trip.id && ctx.assign[x.id] && x.dep < trip.dep);
+  return anyEarlier
+    ? `Inducts ${trainId}. Every trainset already in service was busy or unavailable at ${fmt(trip.dep)}, so another had to be deployed.`
+    : `Opening trip of the plan. Inducts ${trainId}.`;
+}
+/* ============ SOLVER END ============ */
+</script>
+
+<script id="ui">
+/* ============ state ============ */
+const app = { ...sampleData(), params: defaultParams(), schedule: null, disruptions: [], disType: 'unavailable', pick: null, filter: 'all' };
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+const dlg = $('#dlg');
+let toastT;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), 3200); }
+function modal(title, body, actions) {
+  dlg.innerHTML = `<div class="dh"><h3>${esc(title)}</h3><button class="x" data-action="close" aria-label="Close">×</button></div><div class="db">${body}</div><div class="df">${actions}</div>`;
+  if (!dlg.open) dlg.showModal();
+}
+const closeModal = () => { if (dlg.open) dlg.close(); };
+const chip = (txt, cls = '') => `<span class="chip ${cls}">${esc(txt)}</span>`;
+const tsById = () => { const o = {}; app.trainsets.forEach(t => o[t.id] = t); return o; };
+const dur = t => t.arr - t.dep;
+function markStale() { if (app.schedule) app.schedule.stale = true; }
+
+/* ============ schedule build ============ */
+function buildSchedule(res, prevAssign) {
+  const assign = {}; app.trips.forEach(t => { if (t.id in res.assign) assign[t.id] = res.assign[t.id]; });
+  const ctx = { assign, trips: app.trips, ts: tsById(), prev: prevAssign, p: app.params };
+  const explain = {}, reasons = {};
+  for (const trip of app.trips) {
+    if (!(trip.id in res.assign)) { reasons[trip.id] = 'Optional trips are switched off for this plan.'; continue; }
+    const trn = assign[trip.id];
+    if (trn) { explain[trip.id] = explainTrip(trip, trn, ctx); continue; }
+    const d = diagnose(trip, app.trainsets, assign, app.trips, app.params);
+    if (trip.priority === 'mandatory') {
+      reasons[trip.id] = `No trainset can run this mandatory trip. ${d.lines.join('; ')}.`;
+    } else if (d.anyFeasible) {
+      reasons[trip.id] = `Skipped. Serving it would need another trainset, which costs more than this optional trip is worth.`;
+    } else {
+      reasons[trip.id] = `No trainset can run it. ${d.lines.join('; ')}.`;
+    }
+  }
+  let changes = 0;
+  if (prevAssign) for (const t of app.trips) if ((t.id in prevAssign) && (t.id in assign) && prevAssign[t.id] !== assign[t.id]) changes++;
+  return { assign, explain, reasons, res, createdAt: new Date(), stale: false, changes };
+}
+function runSolver(prev) {
+  const res = solve(app.trainsets, app.trips, app.params, prev);
+  return buildSchedule(res, prev);
+}
+const live = () => app.schedule ? validate(app.trainsets, app.trips, app.schedule.assign, app.params) : null;
+function counts() {
+  const s = app.schedule, a = s ? s.assign : {};
+  const mand = app.trips.filter(t => t.priority === 'mandatory');
+  const opt = app.trips.filter(t => t.priority === 'optional');
+  const served = t => !!a[t.id];
+  const used = new Set(Object.values(a).filter(Boolean));
+  return { mand: mand.length, mandServed: mand.filter(served).length, opt: opt.length, optServed: opt.filter(served).length,
+           assigned: app.trips.filter(served).length, trainsUsed: used.size, used };
+}
+function status() {
+  const s = app.schedule; if (!s) return { label: 'Not generated', cls: '' };
+  const v = live();
+  if (v.violations.length) return { label: 'Invalid: constraint violations', cls: 'bad' };
+  if (v.mandUnserved) return { label: 'Infeasible: mandatory trips unserved', cls: 'bad' };
+  if (s.stale) return { label: 'Out of date: data changed', cls: 'warn' };
+  return { label: 'Valid', cls: 'ok' };
+}
+
+/* ============ charts ============ */
+function barChart(labels, series, opts = {}) {
+  const W = 560, H = opts.h || 200, pl = 28, pb = 24, pt = 8, pr = 6;
+  const totals = labels.map((_, i) => series.reduce((s, x) => s + x.values[i], 0));
+  const max = Math.max(1, ...totals), step = Math.ceil(max / 4);
+  const top = step * 4, bw = (W - pl - pr) / labels.length;
+  let g = '';
+  for (let k = 0; k <= 4; k++) {
+    const y = pt + (H - pt - pb) * (1 - k / 4);
+    g += `<line x1="${pl}" x2="${W - pr}" y1="${y}" y2="${y}" stroke="var(--line)"/><text x="${pl - 6}" y="${y + 4}" font-size="10" text-anchor="end" fill="var(--muted)">${k * step}</text>`;
+  }
+  labels.forEach((lb, i) => {
+    let acc = 0;
+    series.forEach(s => {
+      const h = (H - pt - pb) * s.values[i] / top, y = H - pb - (H - pt - pb) * acc / top - h;
+      if (s.values[i] > 0) g += `<rect x="${pl + i * bw + bw * .16}" y="${y}" width="${bw * .68}" height="${h}" rx="2" fill="${s.color}"><title>${esc(lb)}: ${s.values[i]} ${esc(s.name)}</title></rect>`;
+      acc += s.values[i];
+    });
+    if (!opts.skip || i % opts.skip === 0) g += `<text x="${pl + i * bw + bw / 2}" y="${H - 8}" font-size="10" text-anchor="middle" fill="var(--muted)">${esc(lb)}</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="${esc(opts.label || 'chart')}">${g}</svg>`;
+}
+
+/* ============ views ============ */
+function card(l, v, s, cls = '') { return `<div class="card stat ${cls}"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ''}</div>`; }
+
+function viewDashboard() {
+  const c = counts(), st = status(), v = live(), s = app.schedule;
+  const activeN = app.trainsets.filter(t => t.status === 'active').length;
+  const viol = v ? v.violations.length : null;
+  const unserved = s ? app.trips.filter(t => !s.assign[t.id]).length : null;
+  const mandUn = s ? c.mand - c.mandServed : null;
+  let ch1 = '<p class="sub">Generate a schedule to see trainset workload.</p>', ch2 = ch1;
+  if (s) {
+    const ids = app.trainsets.map(t => t.id);
+    const mv = ids.map(id => app.trips.filter(t => s.assign[t.id] === id && t.priority === 'mandatory').length);
+    const ov = ids.map(id => app.trips.filter(t => s.assign[t.id] === id && t.priority === 'optional').length);
+    ch1 = barChart(ids, [{ name: 'mandatory trips', color: 'var(--man)', values: mv }, { name: 'optional trips', color: 'var(--opt)', values: ov }], { label: 'Trips per trainset' });
+    const slots = [], lab = [];
+    for (let m = 240; m < 1440; m += 30) { lab.push(fmt(m)); slots.push(app.trips.filter(t => s.assign[t.id] && t.dep <= m + 15 && t.arr > m + 15).length); }
+    ch2 = barChart(lab, [{ name: 'trips running', color: 'var(--man)', values: slots }], { label: 'Trips running through the day', skip: 4 });
+  }
+  const d = app.disruptions[0];
+  const dis = d ? `<dl class="kv"><dt>Event</dt><dd>${esc(d.desc)}</dd><dt>Affected</dt><dd>${d.affected.length} assignment${d.affected.length === 1 ? '' : 's'}</dd><dt>Reassigned</dt><dd>${d.moved.length}</dd><dt>Newly unserved</dt><dd>${d.dropped.length}</dd><dt>Trainsets in service</dt><dd>${d.usedBefore} → ${d.usedAfter}</dd><dt>Result</dt><dd>${d.valid ? chip('Valid', 'ok') : chip('Mandatory trips unserved', 'bad')}</dd></dl>`
+    : '<p class="sub">No disruption simulated yet. Use the Disruptions page.</p>';
+  return `
+  <div class="head"><div><h1>Dashboard</h1><p>Live summary of the current fleet, trips and generated plan.</p></div>
+    <a class="btn" href="#/schedule">Open scheduling</a></div>
+  <div class="grid cards">
+    ${card('Registered trainsets', app.trainsets.length, `${app.trainsets.length - activeN} inactive`)}
+    ${card('Available trainsets', activeN, 'active and in the planning pool')}
+    ${card('Selected for service', s ? c.trainsUsed : '–', s ? `of ${activeN} available` : 'no plan yet')}
+    ${card('Mandatory trips', c.mand, `${app.trips.length - c.mand} optional`)}
+    ${card('Trips assigned', s ? c.assigned : '–', s ? `of ${app.trips.length} total` : 'no plan yet')}
+    ${card('Unserved trips', s ? unserved : '–', s ? `${mandUn} mandatory`: 'no plan yet', s ? (mandUn ? 'bad' : '') : '')}
+    ${card('Constraint violations', viol === null ? '–' : viol, 'must be zero', viol === null ? '' : (viol ? 'bad' : 'ok'))}
+    ${card('Schedule status', `<span style="font-size:1.05rem">${esc(st.label)}</span>`, s ? `generated ${s.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : '', st.cls)}
+  </div>
+  <div class="grid two" style="margin-top:14px">
+    <div class="card"><h2>Trips per trainset</h2>${ch1}</div>
+    <div class="card"><h2>Trips running through the day</h2>${ch2}</div>
+    <div class="card"><h2>Latest disruption and rescheduling</h2>${dis}</div>
+  </div>`;
+}
+
+function maintText(t) { return t.maintenance.length ? t.maintenance.map(m => `${fmt(m.start)}–${fmt(m.end)}`).join(', ') : '–'; }
+function viewTrainsets() {
+  const s = app.schedule;
+  const rows = app.trainsets.map(t => {
+    const n = s ? app.trips.filter(x => s.assign[x.id] === t.id).length : '–';
+    return `<tr class="${t.status === 'inactive' ? 'dim' : ''}"><td><b>${esc(t.id)}</b></td><td>${t.status === 'active' ? chip('Active', 'ok') : chip('Inactive')}</td>
+      <td>${fmt(t.availStart)}–${fmt(t.availEnd)}</td><td>${maintText(t)}</td><td>${t.readiness || 0} min</td>
+      <td>${t.turnaround === '' ? `default (${app.params.turnaround})` : t.turnaround + ' min'}</td><td>${n}</td>
+      <td><div class="row"><button class="btn ghost sm" data-action="ts-view" data-id="${esc(t.id)}">View</button><button class="btn ghost sm" data-action="ts-edit" data-id="${esc(t.id)}">Edit</button>
+      <button class="btn ghost sm" data-action="ts-toggle" data-id="${esc(t.id)}">${t.status === 'active' ? 'Deactivate' : 'Activate'}</button></div></td></tr>`;
+  }).join('');
+  return `<div class="head"><div><h1>Trainsets</h1><p>The fleet available to the planner. Availability, maintenance windows, readiness and turnaround all feed the optimizer.</p></div>
+    <button class="btn" data-action="ts-new">Add trainset</button></div>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Status</th><th>Availability</th><th>Maintenance</th><th>Readiness</th><th>Turnaround</th><th>Trips</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function viewTrips() {
+  const s = app.schedule;
+  const list = app.trips.filter(t => app.filter === 'all' || t.priority === app.filter).sort((a,b) => a.dep - b.dep);
+  const rows = list.map(t => `<tr><td><b>${esc(t.id)}</b></td><td>${esc(t.block || '–')}</td><td>${fmt(t.dep)}</td><td>${fmt(t.arr)}</td><td>${dur(t)} min</td>
+    <td>${t.priority === 'mandatory' ? chip('Mandatory', 'man') : chip('Optional')}</td><td>${s ? (s.assign[t.id] ? esc(s.assign[t.id]) : '<span class="sub">unassigned</span>') : '–'}</td>
+    <td><div class="row"><button class="btn ghost sm" data-action="trip-edit" data-id="${esc(t.id)}">Edit</button><button class="btn ghost sm" data-action="trip-del" data-id="${esc(t.id)}">Delete</button></div></td></tr>`).join('');
+  return `<div class="head"><div><h1>Trips</h1><p>Scheduled trips for the planning day. Mandatory trips are never dropped to improve another objective.</p></div>
+    <div class="row"><select id="tripFilter" style="width:auto"><option value="all">All trips</option><option value="mandatory"${app.filter === 'mandatory' ? ' selected' : ''}>Mandatory only</option><option value="optional"${app.filter === 'optional' ? ' selected' : ''}>Optional only</option></select>
+    <button class="btn" data-action="trip-new">Add trip</button></div></div>
+    <div class="tablewrap"><table><thead><tr><th>ID</th><th>Block</th><th>Departs</th><th>Arrives</th><th>Duration</th><th>Priority</th><th>Trainset</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function gantt(s) {
+  const S = 240, R = 1200, pc = m => ((m - S) / R * 100);
+  const L = (a, b) => `left:${pc(Math.max(S, a))}%;width:${Math.max(0, pc(Math.min(1440, b)) - pc(Math.max(S, a)))}%`;
+  let ticks = '', grid = '';
+  for (let m = 240; m <= 1440; m += 120) { ticks += `<span style="left:${pc(m)}%">${fmt(m % 1440)}</span>`; grid += `<div class="gl" style="left:${pc(m)}%"></div>`; }
+  const rows = app.trainsets.map(t => {
+    const bars = app.trips.filter(x => s.assign[x.id] === t.id).map(x => {
+      const num = (x.id.match(/\d+/) || [''])[0].replace(/^0+/, '');
+      const cls = `${x.priority === 'mandatory' ? 'man' : 'opt'}${s.changed && s.changed.has(x.id) ? ' chg' : ''}${app.pick === x.id ? ' sel' : ''}`;
+      return `<button class="blk ${cls}" style="${L(x.dep, x.arr)}" data-action="pick" data-id="${esc(x.id)}" title="${esc(x.id)} ${fmt(x.dep)}–${fmt(x.arr)}">${num}</button>`;
+    }).join('');
+    const mt = t.maintenance.map(m => `<div class="mt" style="${L(m.start, m.end)}" title="Maintenance ${fmt(m.start)}–${fmt(m.end)}"></div>`).join('');
+    return `<div class="grow"><div class="lab">${esc(t.id)}<small>${t.status === 'active' ? 'active' : 'inactive'}</small></div>
+      <div class="track">${grid}${t.status === 'inactive' ? `<div class="na" style="left:0;right:0"></div>` : `<div class="na" style="${L(S, t.availStart + (t.readiness || 0))}"></div><div class="na" style="${L(t.availEnd, 1440)}"></div>`}${mt}${bars}</div></div>`;
+  }).join('');
+  return `<div class="gwrap"><div class="gantt"><div class="axis"><div></div><div class="t">${ticks}</div></div>${rows}</div>
+    <div class="legend"><span><i style="background:var(--man)"></i>Mandatory trip</span><span><i style="background:var(--opt)"></i>Optional trip</span>
+    <span><i style="background:var(--mt)"></i>Maintenance or unavailable</span><span><i style="background:repeating-linear-gradient(135deg,var(--hatch) 0 3px,transparent 3px 6px);border:1px solid var(--line)"></i>Outside availability</span>
+    <span><i style="box-shadow:0 0 0 2px var(--warn);background:var(--surface)"></i>Changed by the last re-plan</span></div></div>`;
+}
+
+function tripPanel() {
+  const s = app.schedule, t = app.trips.find(x => x.id === app.pick);
+  if (!t) return `<p class="sub" style="margin:10px 2px">Select a trip on the chart to see why it was assigned where it was.</p>`;
+  const trn = s.assign[t.id];
+  return `<div class="card" style="margin-top:12px"><div class="row" style="justify-content:space-between"><b>${esc(t.id)}</b><span>${t.priority === 'mandatory' ? chip('Mandatory', 'man') : chip('Optional')}</span></div>
+    <p class="sub" style="margin:4px 0 8px">${fmt(t.dep)}–${fmt(t.arr)} · ${dur(t)} min · ${trn ? 'on ' + esc(trn) : 'unassigned'}</p>
+    <p style="margin:0">${esc(trn ? (s.explain[t.id] || 'Added or changed after this plan was generated.') : (s.reasons[t.id] || 'Not part of the generated plan. Regenerate the schedule.'))}</p></div>`;
+}
+
+function inputNum(key, label, min, max, step = 1) { return `<label>${label}<input type="number" data-param="${key}" min="${min}" max="${max}" step="${step}" value="${app.params[key]}"></label>`; }
+
+function viewSchedule() {
+  const s = app.schedule, p = app.params;
+  const controls = `<div class="card" style="margin-bottom:14px"><h2>Planning parameters</h2>
+    <div class="fields">
+      <label>Planning date<input type="date" data-param="date" value="${esc(p.date)}"></label>
+      ${inputNum('turnaround', 'Minimum turnaround (min)', 0, 120)}
+      ${inputNum('fleetCost', 'Cost per trainset deployed', 0, 10000)}
+      ${inputNum('optionalValue', 'Value of an optional trip', 0, 10000)}
+      ${inputNum('changePenalty', 'Penalty per changed assignment', 0, 10000)}
+      ${inputNum('timeLimitMs', 'Solver time limit (ms)', 200, 20000, 100)}
+    </div>
+    <div class="row" style="margin-top:12px;gap:22px">
+      <label class="check"><input type="checkbox" data-param="includeOptional" ${p.includeOptional ? 'checked' : ''}> Include optional trips</label>
+      <label class="check"><input type="checkbox" data-param="keepPrev" ${p.keepPrev ? 'checked' : ''}> Keep previous assignments where possible</label>
+    </div>
+    <div class="row" style="margin-top:14px"><button class="btn" data-action="generate">Generate optimized schedule</button>
+      <span class="sub">Planning horizon: one service day (04:00–24:00). Mandatory trips weigh 1,000,000 each, so they are never traded away for savings.</span></div></div>`;
+  if (!s) return `<div class="head"><div><h1>Scheduling and induction</h1><p>Choose a planning date and parameters, then generate a plan.</p></div></div>${controls}<div class="card"><p class="sub" style="margin:0">No schedule yet.</p></div>`;
+  const v = live(), c = counts(), st = status(), r = s.res;
+  let banner = '';
+  if (v.violations.length) banner = `<div class="alert bad"><b>Invalid schedule.</b> ${v.violations.length} constraint violation${v.violations.length === 1 ? '' : 's'} found. See the report below.</div>`;
+  else if (v.mandUnserved) banner = `<div class="alert bad"><b>Infeasible with the current data.</b> ${v.mandUnserved} mandatory trip${v.mandUnserved === 1 ? '' : 's'} cannot be served. This is a partial plan, not a valid schedule. The unassigned list explains what blocks each trip.</div>`;
+  else if (s.stale) banner = `<div class="alert warn"><b>Out of date.</b> Trainsets, trips or parameters changed after this plan was generated. Regenerate to refresh it.</div>`;
+  else banner = `<div class="alert ok"><b>Valid schedule.</b> All mandatory trips are served and every constraint check passes.</div>`;
+  const proof = r.proven ? (r.cost <= r.lowerBound ? 'Proven optimal (matches the lower bound)' : 'Proven optimal (search completed)') : 'Best found (search limit reached)';
+  const obj = `<div class="grid cards" style="margin-bottom:14px">
+    ${card('Trainsets deployed', c.trainsUsed, `lower bound ${r.minFleet} for mandatory trips`)}
+    ${card('Mandatory coverage', `${c.mandServed}/${c.mand}`, '', c.mandServed === c.mand ? 'ok' : 'bad')}
+    ${card('Optional coverage', `${c.optServed}/${c.opt}`, p.includeOptional ? '' : 'excluded')}
+    ${card('Changes vs previous plan', s.prevCompared ? s.changes : '–', s.prevCompared ? 'assignments moved or dropped' : 'no previous plan used')}
+    ${card('Objective value', Math.round(r.cost).toLocaleString(), esc(proof))}
+    ${card('Solver effort', `${r.nodes.toLocaleString()}`, `search nodes · ${Math.round(r.ms)} ms`)}</div>`;
+  const used = app.trainsets.filter(t => c.used.has(t.id)).map(t => {
+    const ls = app.trips.filter(x => s.assign[x.id] === t.id).sort((a,b) => a.dep - b.dep);
+    const first = ls[0].dep, last = Math.max(...ls.map(x => x.arr)), busy = ls.reduce((a,x) => a + dur(x), 0);
+    return `<tr><td><b>${esc(t.id)}</b></td><td>${ls.length}</td><td>${fmt(first)}</td><td>${fmt(last)}</td><td>${Math.round(busy / (last - first) * 100)}%</td></tr>`;
+  }).join('');
+  const un = app.trips.filter(t => !s.assign[t.id]);
+  const unRows = un.map(t => `<tr><td><b>${esc(t.id)}</b></td><td>${t.priority === 'mandatory' ? chip('Mandatory', 'bad') : chip('Optional')}</td><td>${fmt(t.dep)}–${fmt(t.arr)}</td><td class="wrap">${esc(s.reasons[t.id] || 'Not part of the generated plan. Regenerate the schedule.')}</td></tr>`).join('');
+  const checks = v.categories.map(k => `<tr><td>${esc(k.label)}</td><td>${k.count ? chip(k.count + ' violation' + (k.count === 1 ? '' : 's'), 'bad') : chip('Pass', 'ok')}</td></tr>`).join('')
+    + `<tr><td>All mandatory trips assigned</td><td>${v.mandUnserved ? chip(v.mandUnserved + ' unserved', 'bad') : chip('Pass', 'ok')}</td></tr>`;
+  const vlist = v.violations.length ? `<ul class="plain" style="margin-top:10px">${v.violations.slice(0, 12).map(x => `<li>${esc(x.msg)}</li>`).join('')}</ul>` : '';
+  return `<div class="head"><div><h1>Scheduling and induction</h1><p>Plan for ${esc(p.date)} · status ${chip(st.label, st.cls)}</p></div></div>
+    ${controls}${banner}${obj}
+    <div class="card" style="margin-bottom:14px"><h2>Trip assignments by trainset</h2></div>
+    <div style="margin-top:-14px">${gantt(s)}${tripPanel()}</div>
+    <div class="grid two" style="margin-top:14px">
+      <div><h2 style="font-size:1.02rem;margin:0 0 10px">Inducted trainsets</h2><div class="tablewrap"><table><thead><tr><th>Trainset</th><th>Trips</th><th>First departure</th><th>Last arrival</th><th>Utilisation</th></tr></thead><tbody>${used || '<tr><td colspan="5" class="sub">None inducted.</td></tr>'}</tbody></table></div></div>
+      <div><h2 style="font-size:1.02rem;margin:0 0 10px">Constraint validation</h2><div class="tablewrap"><table><tbody>${checks}</tbody></table></div>${vlist}</div>
+    </div>
+    <h2 style="font-size:1.02rem;margin:18px 0 10px">Unassigned trips</h2>
+    <div class="tablewrap"><table><thead><tr><th>Trip</th><th>Priority</th><th>Time</th><th>Why</th></tr></thead><tbody>${unRows || '<tr><td colspan="4" class="sub">Every trip is assigned.</td></tr>'}</tbody></table></div>`;
+}
+
+function disFields() {
+  const tOpts = app.trainsets.filter(t => t.status === 'active').map(t => `<option value="${esc(t.id)}">${esc(t.id)}</option>`).join('');
+  const rOpts = [...app.trips].sort((a,b) => a.dep - b.dep).map(t => `<option value="${esc(t.id)}">${esc(t.id)} · ${fmt(t.dep)}–${fmt(t.arr)}</option>`).join('');
+  switch (app.disType) {
+    case 'unavailable': return `<label>Trainset<select id="d-ts">${tOpts}</select></label><label>Unavailable from<input id="d-from" type="time" value="09:00"></label><label>Until<input id="d-to" type="time" value="23:59"></label>`;
+    case 'maintenance': return `<label>Trainset<select id="d-ts">${tOpts}</select></label><label>Maintenance from<input id="d-from" type="time" value="08:00"></label><label>Until<input id="d-to" type="time" value="14:00"></label>`;
+    case 'cancel': return `<label>Trip<select id="d-trip">${rOpts}</select></label>`;
+    case 'retime': return `<label>Trip<select id="d-trip">${rOpts}</select></label><label>New departure<input id="d-dep" type="time" value="08:00"></label><label>New arrival<input id="d-arr" type="time" value="08:45"></label>`;
+    default: return `<label>Applies to<select id="d-scope"><option value="global">All trainsets (default)</option>${app.trainsets.map(t => `<option value="${esc(t.id)}">${esc(t.id)} only</option>`).join('')}</select></label><label>Turnaround (min)<input id="d-turn" type="number" min="0" max="120" value="20"></label>`;
+  }
+}
+function viewDisruptions() {
+  const types = [['unavailable', 'Trainset becomes unavailable'], ['maintenance', 'Extended maintenance'], ['cancel', 'Trip cancellation'], ['retime', 'Trip time change'], ['turnaround', 'Turnaround requirement change']];
+  const form = `<div class="card" style="margin-bottom:14px"><h2>Simulate an event</h2>
+    <div class="fields"><label>Event type<select id="d-type">${types.map(([k, l]) => `<option value="${k}"${app.disType === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>${disFields()}</div>
+    <div class="row" style="margin-top:14px"><button class="btn" data-action="dis-apply">Apply and re-plan</button><span class="sub">Existing assignments are kept wherever they stay feasible, within the change penalty set on the Scheduling page.</span></div>
+    <div class="err" id="d-err"></div></div>`;
+  const log = app.disruptions.map((d, i) => {
+    const mv = d.moved.map(x => `<li>${esc(x.id)}: ${esc(x.from)} → ${esc(x.to)}</li>`).join('');
+    const dp = d.dropped.map(x => `<li>${esc(x.id)} (was on ${esc(x.from)}) is now unserved</li>`).join('');
+    const ga = d.gained.map(x => `<li>${esc(x.id)} is now served on ${esc(x.to)}</li>`).join('');
+    return `<div class="card" style="margin-bottom:12px"><div class="row" style="justify-content:space-between"><b>${i === 0 ? 'Latest: ' : ''}${esc(d.desc)}</b><span class="sub">${d.at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+      <p class="sub" style="margin:6px 0 10px">${d.affected.length} assignment${d.affected.length === 1 ? '' : 's'} affected · ${d.moved.length} reassigned · ${d.unchanged} unchanged · trainsets in service ${d.usedBefore} → ${d.usedAfter} · ${d.valid ? 'valid plan' : 'mandatory trips unserved'}</p>
+      ${(mv || dp || ga) ? `<ul class="plain">${mv}${dp}${ga}</ul>` : '<p style="margin:0">No assignments needed to change.</p>'}</div>`;
+  }).join('');
+  return `<div class="head"><div><h1>Disruption simulator</h1><p>Apply an event, then watch the optimizer repair the plan with as few changes as it can.</p></div></div>${form}
+    ${log || '<div class="card"><p class="sub" style="margin:0">No events yet. Generate a baseline schedule first, then apply an event.</p></div>'}`;
+}
+
+/* ============ forms ============ */
+function mRow(m = { start: 600, end: 660, note: '' }) {
+  return `<div class="mrow"><label>From<input type="time" class="m-s" value="${fmt(m.start)}"></label><label>To<input type="time" class="m-e" value="${fmt(m.end)}"></label><button class="btn ghost sm" data-action="m-del" style="margin-bottom:2px">Remove</button><input type="hidden" class="m-n" value="${esc(m.note || '')}"></div>`;
+}
+function tsForm(id) {
+  const ex = id ? app.trainsets.find(t => t.id === id) : null;
+  const t = ex ? clone(ex) : { id: '', status: 'active', availStart: 300, availEnd: 1380, readiness: 15, turnaround: '', maintenance: [], notes: '' };
+  modal(ex ? 'Edit ' + t.id : 'Add trainset', `<div class="fields">
+      <label>Trainset ID<input id="f-id" value="${esc(t.id)}" ${ex ? 'readonly' : ''} placeholder="TS-09"></label>
+      <label>Status<select id="f-status"><option value="active"${t.status === 'active' ? ' selected' : ''}>Active</option><option value="inactive"${t.status === 'inactive' ? ' selected' : ''}>Inactive</option></select></label>
+      <label>Available from<input id="f-s" type="time" value="${fmt(t.availStart)}"></label><label>Available until<input id="f-e" type="time" value="${fmt(t.availEnd)}"></label>
+      <label>Readiness before first trip (min)<input id="f-r" type="number" min="0" max="240" value="${t.readiness || 0}"></label>
+      <label>Turnaround override (min, blank = default)<input id="f-t" type="number" min="0" max="120" value="${t.turnaround}"></label></div>
+      <p style="margin:16px 0 8px;font-weight:600">Maintenance windows</p><div id="mlist">${t.maintenance.map(mRow).join('')}</div>
+      <button class="btn ghost sm" data-action="m-add">Add maintenance window</button>
+      <label style="margin-top:14px">Notes<input id="f-n" value="${esc(t.notes)}" placeholder="Optional"></label><div class="err" id="f-err"></div>`,
+    `<button class="btn ghost" data-action="close">Cancel</button><button class="btn" data-action="ts-save" data-edit="${ex ? esc(ex.id) : ''}">Save</button>`);
+}
+function tripForm(id) {
+  const ex = id ? app.trips.find(t => t.id === id) : null;
+  const nextId = 'T-' + String(Math.max(0, ...app.trips.map(t => parseInt((t.id.match(/\d+/) || [0])[0], 10))) + 1).padStart(3, '0');
+  const t = ex ? clone(ex) : { id: nextId, dep: 480, arr: 525, priority: 'mandatory', block: '' };
+  modal(ex ? 'Edit ' + t.id : 'Add trip', `<div class="fields">
+      <label>Trip ID<input id="f-id" value="${esc(t.id)}" ${ex ? 'readonly' : ''}></label>
+      <label>Priority<select id="f-pri"><option value="mandatory"${t.priority === 'mandatory' ? ' selected' : ''}>Mandatory</option><option value="optional"${t.priority === 'optional' ? ' selected' : ''}>Optional</option></select></label>
+      <label>Departure<input id="f-dep" type="time" value="${fmt(t.dep)}"></label><label>Arrival<input id="f-arr" type="time" value="${fmt(t.arr)}"></label>
+      <label>Duration<input id="f-dur" readonly value="${t.arr - t.dep} min"></label><label>Block (free text)<input id="f-block" value="${esc(t.block || '')}" placeholder="e.g. Morning peak"></label></div><div class="err" id="f-err"></div>`,
+    `<button class="btn ghost" data-action="close">Cancel</button><button class="btn" data-action="trip-save" data-edit="${ex ? esc(ex.id) : ''}">Save</button>`);
+}
+function readMaint() {
+  const out = [];
+  for (const r of $$('.mrow', dlg)) {
+    const s = parseT($('.m-s', r).value), e = parseT($('.m-e', r).value);
+    if (isNaN(s) || isNaN(e)) return { error: 'Every maintenance window needs a start and an end time.' };
+    if (e <= s) return { error: 'A maintenance window must end after it starts.' };
+    out.push({ start: s, end: e, note: $('.m-n', r).value });
+  }
+  out.sort((a, b) => a.start - b.start);
+  for (let i = 1; i < out.length; i++) if (out[i].start < out[i-1].end) return { error: 'Maintenance windows overlap. Merge them into one.' };
+  return { list: out };
+}
+
+/* ============ disruptions ============ */
+function mergeWindow(ts, w) {
+  let s = w.start, e = w.end;
+  ts.maintenance = ts.maintenance.filter(m => { if (m.start <= e && m.end >= s) { s = Math.min(s, m.start); e = Math.max(e, m.end); return false; } return true; });
+  ts.maintenance.push({ start: s, end: e, note: w.note }); ts.maintenance.sort((a, b) => a.start - b.start);
+}
+function readEvent() {
+  const type = app.disType, g = id => { const el = $('#' + id); return el ? el.value : ''; };
+  const ev = { type };
+  if (type === 'unavailable' || type === 'maintenance') { ev.ts = g('d-ts'); ev.from = parseT(g('d-from')); ev.to = parseT(g('d-to')); if (!ev.ts) return { err: 'No active trainset to disrupt.' }; if (isNaN(ev.from) || isNaN(ev.to)) return { err: 'Enter both times.' }; if (ev.to <= ev.from) return { err: 'The end time must be after the start time.' }; }
+  if (type === 'cancel') { ev.trip = g('d-trip'); if (!ev.trip) return { err: 'No trip to cancel.' }; }
+  if (type === 'retime') { ev.trip = g('d-trip'); ev.dep = parseT(g('d-dep')); ev.arr = parseT(g('d-arr')); if (!ev.trip) return { err: 'No trip selected.' }; if (isNaN(ev.dep) || isNaN(ev.arr)) return { err: 'Enter both times.' }; if (ev.arr <= ev.dep) return { err: 'Arrival must be later than departure.' }; }
+  if (type === 'turnaround') { ev.scope = g('d-scope'); ev.value = Number(g('d-turn')); if (!Number.isInteger(ev.value) || ev.value < 0 || ev.value > 120) return { err: 'Turnaround must be a whole number between 0 and 120.' }; }
+  return { ev };
+}
+function applyEvent(ev, d) {
+  if (ev.type === 'unavailable' || ev.type === 'maintenance') {
+    const t = d.trainsets.find(x => x.id === ev.ts);
+    mergeWindow(t, { start: ev.from, end: ev.to, note: ev.type === 'unavailable' ? 'Unavailable (disruption)' : 'Extended maintenance' });
+    return ev.type === 'unavailable' ? `${ev.ts} unavailable ${fmt(ev.from)}–${fmt(ev.to)}` : `${ev.ts} in maintenance ${fmt(ev.from)}–${fmt(ev.to)}`;
+  }
+  if (ev.type === 'cancel') { d.trips = d.trips.filter(x => x.id !== ev.trip); return `Trip ${ev.trip} cancelled`; }
+  if (ev.type === 'retime') { const t = d.trips.find(x => x.id === ev.trip); t.dep = ev.dep; t.arr = ev.arr; return `Trip ${ev.trip} retimed to ${fmt(ev.dep)}–${fmt(ev.arr)}`; }
+  if (ev.scope === 'global') { d.params.turnaround = ev.value; return `Default turnaround changed to ${ev.value} min`; }
+  d.trainsets.find(x => x.id === ev.scope).turnaround = ev.value; return `${ev.scope} turnaround changed to ${ev.value} min`;
+}
+function disrupt() {
+  const err = $('#d-err');
+  if (!app.schedule) { err.textContent = 'Generate a baseline schedule first.'; return; }
+  const r = readEvent(); if (r.err) { err.textContent = r.err; return; }
+  err.textContent = '';
+  const old = app.schedule.assign, usedBefore = new Set(Object.values(old).filter(Boolean)).size;
+  const draft = { trainsets: clone(app.trainsets), trips: clone(app.trips), params: { ...app.params } };
+  const desc = applyEvent(r.ev, draft);
+  const v = validate(draft.trainsets, draft.trips, old, draft.params);
+  const affected = new Set(v.violations.map(x => x.trip));
+  if (r.ev.trip && old[r.ev.trip]) affected.add(r.ev.trip);
+  app.trainsets = draft.trainsets; app.trips = draft.trips; app.params = draft.params;
+  const sched = runSolver(old);
+  const changed = new Set(), moved = [], dropped = [], gained = []; let unchanged = 0;
+  for (const t of app.trips) {
+    if (!(t.id in old)) continue;
+    const a = old[t.id], b = sched.assign[t.id];
+    if (a === b) { if (a) unchanged++; } else if (a && b) { moved.push({ id: t.id, from: a, to: b }); changed.add(t.id); }
+    else if (a && !b) { dropped.push({ id: t.id, from: a }); changed.add(t.id); } else if (!a && b) { gained.push({ id: t.id, to: b }); changed.add(t.id); }
+  }
+  sched.changed = changed; sched.changes = moved.length + dropped.length; sched.prevCompared = true;
+  app.schedule = sched;
+  const c = counts();
+  app.disruptions.unshift({ at: new Date(), desc, affected: [...affected], moved, dropped, gained, unchanged, usedBefore, usedAfter: c.trainsUsed, valid: c.mandServed === c.mand && validate(app.trainsets, app.trips, sched.assign, app.params).violations.length === 0 });
+  toast(c.mandServed === c.mand ? 'Plan repaired.' : 'Some mandatory trips can no longer be served.');
+  render();
+}
+
+/* ============ actions ============ */
+const actions = {
+  close: closeModal,
+  theme() { const r = document.documentElement, dark = r.getAttribute('data-theme') === 'dark' || (!r.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches); const nx = dark ? 'light' : 'dark'; r.setAttribute('data-theme', nx); try { localStorage.setItem('metroopt-theme', nx); } catch (e) {} },
+  reset() { modal('Reset sample data?', '<p style="margin:0">This restores the fictional fleet, trips and parameters, and clears the schedule and disruption history.</p>', '<button class="btn ghost" data-action="close">Cancel</button><button class="btn danger" data-action="reset-yes">Reset</button>'); },
+  'reset-yes'() { Object.assign(app, sampleData(), { params: defaultParams(), schedule: null, disruptions: [], pick: null }); closeModal(); render(); toast('Sample data restored.'); },
+  generate(el) {
+    el.disabled = true; el.textContent = 'Optimizing…';
+    setTimeout(() => {
+      const prev = (app.params.keepPrev && app.schedule) ? app.schedule.assign : null;
+      const s = runSolver(prev); s.prevCompared = !!prev; s.changed = new Set();
+      if (prev) for (const t of app.trips) if ((t.id in prev) && prev[t.id] !== s.assign[t.id]) s.changed.add(t.id);
+      app.schedule = s; app.pick = null; render();
+      const c = counts(); toast(c.mandServed === c.mand ? `Plan ready: ${c.trainsUsed} trainsets, all mandatory trips served.` : 'Infeasible: some mandatory trips cannot be served.');
+    }, 30);
+  },
+  pick(el) { app.pick = app.pick === el.dataset.id ? null : el.dataset.id; render(); },
+  'ts-new'() { tsForm(); }, 'ts-edit'(el) { tsForm(el.dataset.id); },
+  'ts-view'(el) {
+    const t = app.trainsets.find(x => x.id === el.dataset.id), s = app.schedule;
+    const ls = s ? app.trips.filter(x => s.assign[x.id] === t.id).sort((a,b) => a.dep - b.dep) : [];
+    modal(t.id, `<dl class="kv"><dt>Status</dt><dd>${t.status}</dd><dt>Availability</dt><dd>${fmt(t.availStart)}–${fmt(t.availEnd)}</dd><dt>Readiness</dt><dd>${t.readiness || 0} min</dd><dt>Turnaround</dt><dd>${t.turnaround === '' ? 'default (' + app.params.turnaround + ' min)' : t.turnaround + ' min'}</dd><dt>Maintenance</dt><dd>${maintText(t)}</dd><dt>Notes</dt><dd>${esc(t.notes) || '–'}</dd><dt>Assigned trips</dt><dd>${ls.length ? ls.map(x => `${esc(x.id)} (${fmt(x.dep)})`).join(', ') : (s ? 'none' : 'no plan yet')}</dd></dl>`, '<button class="btn ghost" data-action="close">Close</button>');
+  },
+  'ts-toggle'(el) { const t = app.trainsets.find(x => x.id === el.dataset.id); t.status = t.status === 'active' ? 'inactive' : 'active'; markStale(); render(); toast(`${t.id} ${t.status === 'active' ? 'activated' : 'deactivated'}.${app.schedule ? ' Regenerate the schedule.' : ''}`); },
+  'm-add'() { $('#mlist', dlg).insertAdjacentHTML('beforeend', mRow()); },
+  'm-del'(el) { el.closest('.mrow').remove(); },
+  'ts-save'(el) {
+    const err = $('#f-err', dlg), edit = el.dataset.edit, id = $('#f-id', dlg).value.trim();
+    const s = parseT($('#f-s', dlg).value), e = parseT($('#f-e', dlg).value), rd = Number($('#f-r', dlg).value), tv = $('#f-t', dlg).value.trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) return err.textContent = 'ID is required and may use letters, numbers, hyphen and underscore only.';
+    if (!edit && app.trainsets.some(t => t.id.toLowerCase() === id.toLowerCase())) return err.textContent = 'That trainset ID already exists.';
+    if (isNaN(s) || isNaN(e) || e <= s) return err.textContent = 'Availability must end after it starts.';
+    if (!Number.isInteger(rd) || rd < 0 || rd > 240) return err.textContent = 'Readiness must be a whole number from 0 to 240 minutes.';
+    if (tv !== '' && (!Number.isInteger(Number(tv)) || Number(tv) < 0 || Number(tv) > 120)) return err.textContent = 'Turnaround override must be a whole number from 0 to 120 or blank.';
+    const m = readMaint(); if (m.error) return err.textContent = m.error;
+    const rec = { id, status: $('#f-status', dlg).value, availStart: s, availEnd: e, readiness: rd, turnaround: tv === '' ? '' : Number(tv), maintenance: m.list, notes: $('#f-n', dlg).value.trim() };
+    if (edit) app.trainsets[app.trainsets.findIndex(t => t.id === edit)] = rec; else app.trainsets.push(rec);
+    markStale(); closeModal(); render(); toast(app.schedule ? 'Saved. The schedule is now out of date.' : 'Saved.');
+  },
+  'trip-new'() { tripForm(); }, 'trip-edit'(el) { tripForm(el.dataset.id); },
+  'trip-del'(el) { modal('Delete ' + el.dataset.id + '?', '<p style="margin:0">The trip is removed from the data. Regenerate the schedule afterwards.</p>', `<button class="btn ghost" data-action="close">Cancel</button><button class="btn danger" data-action="trip-del-yes" data-id="${esc(el.dataset.id)}">Delete</button>`); },
+  'trip-del-yes'(el) { app.trips = app.trips.filter(t => t.id !== el.dataset.id); if (app.schedule) delete app.schedule.assign[el.dataset.id]; markStale(); closeModal(); render(); toast('Trip deleted.'); },
+  'trip-save'(el) {
+    const err = $('#f-err', dlg), edit = el.dataset.edit, id = $('#f-id', dlg).value.trim();
+    const dep = parseT($('#f-dep', dlg).value), arr = parseT($('#f-arr', dlg).value);
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) return err.textContent = 'ID is required and may use letters, numbers, hyphen and underscore only.';
+    if (!edit && app.trips.some(t => t.id.toLowerCase() === id.toLowerCase())) return err.textContent = 'That trip ID already exists.';
+    if (isNaN(dep) || isNaN(arr)) return err.textContent = 'Departure and arrival times are required.';
+    if (arr <= dep) return err.textContent = 'Arrival must be later than departure.';
+    const rec = { id, dep, arr, priority: $('#f-pri', dlg).value, block: $('#f-block', dlg).value.trim() };
+    if (edit) app.trips[app.trips.findIndex(t => t.id === edit)] = rec; else app.trips.push(rec);
+    markStale(); closeModal(); render(); toast(app.schedule ? 'Saved. The schedule is now out of date.' : 'Saved.');
+  },
+  'dis-apply': disrupt
+};
+document.addEventListener('click', e => { const el = e.target.closest('[data-action]'); if (el && actions[el.dataset.action]) { e.preventDefault(); actions[el.dataset.action](el, e); } });
+document.addEventListener('input', e => {
+  if (e.target.id === 'f-dep' || e.target.id === 'f-arr') { const d = parseT($('#f-dep', dlg).value), a = parseT($('#f-arr', dlg).value); $('#f-dur', dlg).value = (isNaN(d) || isNaN(a)) ? '' : (a - d) + ' min'; }
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'tripFilter') { app.filter = el.value; render(); }
+  else if (el.id === 'd-type') { app.disType = el.value; render(); }
+  else if (el.dataset && el.dataset.param) {
+    const k = el.dataset.param;
+    if (el.type === 'checkbox') app.params[k] = el.checked;
+    else if (el.type === 'number') { const v = Number(el.value); if (el.value === '' || isNaN(v) || v < Number(el.min) || v > Number(el.max)) { toast(`Enter a value from ${el.min} to ${el.max}.`); el.value = app.params[k]; return; } app.params[k] = v; }
+    else app.params[k] = el.value;
+    if (k !== 'keepPrev') markStale();
+    render();
+  }
+});
+
+/* ============ router ============ */
+const views = { dashboard: viewDashboard, trainsets: viewTrainsets, trips: viewTrips, schedule: viewSchedule, disruptions: viewDisruptions };
+function render() {
+  const route = (location.hash.replace('#/', '') || 'dashboard'); const key = views[route] ? route : 'dashboard';
+  $$('[data-nav]').forEach(a => a.classList.toggle('on', a.dataset.nav === key));
+  const y = window.scrollY; $('#view').innerHTML = views[key](); window.scrollTo(0, y);
+}
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+try { const th = localStorage.getItem('metroopt-theme'); if (th === 'dark' || th === 'light') document.documentElement.setAttribute('data-theme', th); } catch (e) {}
+render();
+</script>
+</body>
+</html>
